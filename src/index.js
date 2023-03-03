@@ -7,14 +7,7 @@ const marked = require('marked');
 const jsdom = require('jsdom');
 //console.log(jsdom)
 const axios = require('axios');
-const { type } = require('os');
 //console.log(axios)
-
-// const convertToAbsolute = (newPath) => {
-//   let route = newPath;
-//   if (!path.isAbsolute(newPath)) route = path.resolve(newPath);
-//   return route;
-// };
 
 const { JSDOM } = jsdom;
 
@@ -44,30 +37,55 @@ const getExtension = (newPath) => path.extname(newPath);
 
 const httpRequest = (link) => axios.get(link);
 
-const getLinks = (newPath, userPath) => {
+
+
+// TODO: hacer que funcione usando solamente un path
+const getLinks = (newPath, userPath, options) => {
   // Obtener el contenido del archivo y pasarlo a string
   const mdStringContent = fs.readFileSync(newPath).toString();
   //console.log(mdStringContent);
   // Convertir contenido del archivo .md a html
   const mdHtmlContent = marked.parse(mdStringContent);
-  console.log(typeof mdHtmlContent);
+  //console.log(mdHtmlContent);
   // Extraer los links con jsdom
   const dom = new JSDOM(mdHtmlContent);
   //console.log(dom);
+  // const dom = new JSDOM(`<!DOCTYPE html><p>${mdHtmlContent}</p>`); 
+  // console.log(dom.window.document.querySelector("p").textContent);
   const nodeList = dom.window.document.querySelectorAll('a');
-  console.log(nodeList);
+  //console.log(nodeList);
   const arrayOfAnchor = Array.from(nodeList);
   const arr = [];
 
-  arrayOfAnchor.forEach((element) => {
-    //console.log(element.textContent, element.getAttribute('href'));
-    const obj = {
-      href: element.getAttribute('href'),
-      text: element.textContent,
-      file: userPath,
-    };
-    arr.push(obj);
-  });
+  if (options.validate) {
+    arrayOfAnchor.forEach((element) => {
+      arr.push(httpRequest(element.href)
+        .then((response) => ({
+          href: element.getAttribute('href'),
+          text: element.textContent,
+          file: userPath,
+          status: response.status,
+          statusText: response.statusText,
+        }))
+        .catch(() => ({
+          href: element.getAttribute('href'),
+          text: element.textContent,
+          file: userPath,
+          status: 'nose',
+          statusText: 'Fail',
+        })));
+    });
+  } else {
+    arrayOfAnchor.forEach((element) => {
+      const obj = {
+        href: element.getAttribute('href'),
+        text: element.textContent,
+        file: userPath,
+      };
+      arr.push(obj);
+    });
+  }
+  console.log(arr);
   return arr;
 };
 
@@ -78,5 +96,6 @@ module.exports = {
   pathIsDirectory,
   getExtension,
   getLinks,
-  httpRequest,
 };
+
+

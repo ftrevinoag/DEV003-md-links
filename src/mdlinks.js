@@ -1,42 +1,28 @@
-const {
-  absolutePath,
-  pathIsFile,
-  /* pathIsDirectory,  */
-  validatePath,
-  getExtension,
-  getLinks,
-  httpRequest,
-} = require('./index');
+const utilFunctions = require('./index');
 
-const mdLinks = (userPath, options) => {
-  if (validatePath(userPath)) {
-    const absPath = absolutePath(userPath);
+const mdLinks = (userPath, options) => new Promise((resolve, reject) => {
+  if (utilFunctions.validatePath(userPath)) {
+    const absPath = utilFunctions.absolutePath(userPath);
 
-    if (pathIsFile(absPath) && getExtension(absPath) === '.md') {
-      const arrLinks = getLinks(absPath, userPath);
-
-      if (options.validate === true) {
-        arrLinks.forEach((element) => {
-          console.log(element);
-          httpRequest(element.href)
-            .then((response) => {
-              console.log(`${response.status}, ${response.statusText}`);
-            })
-            .catch((error) => {
-              console.log(error.code);
-            });
-        });
+    if (utilFunctions.pathIsFile(absPath) && utilFunctions.getExtension(absPath) === '.md') {
+      const arrOfLinks = utilFunctions.getLinks(absPath, userPath, options);
+      if (arrOfLinks.length > 0) {
+        resolve(Promise.all(arrOfLinks));
       } else {
-        console.log('objeto sin http request');
+        //console.log('objeto sin http request');
+        reject(new Error('No se encontró archivos markdown con links'));
       }
     } else {
       console.log('es directorio');
     }
   } else {
     console.log('Ruta no válida');
+    reject(new Error('Ruta no válida'));
   }
-};
+});
 
-mdLinks('./README.md', { validate: false });
+mdLinks('./README.md', { validate: true }).then((res) => {
+  console.log(res);
+});
 
 module.exports = mdLinks;
